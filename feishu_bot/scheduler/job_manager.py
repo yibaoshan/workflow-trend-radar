@@ -3,6 +3,8 @@
 """
 
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -18,7 +20,8 @@ class JobManager:
     def __init__(self, db: Database, pusher: Pusher):
         self.db = db
         self.pusher = pusher
-        self.scheduler = AsyncIOScheduler()
+        # 使用 UTC 时区的调度器
+        self.scheduler = AsyncIOScheduler(timezone='UTC')
 
     def start(self):
         """启动调度器"""
@@ -44,20 +47,34 @@ class JobManager:
     def add_user_jobs(self, user):
         """为单个用户添加定时任务"""
         push_times = user.get_push_times()
+        user_timezone = user.timezone  # 用户所在时区
 
         for push_time in push_times:
             try:
                 hour, minute = push_time.split(':')
 
+                # 将用户时区的时间转换为 UTC 时间
+                user_tz = ZoneInfo(user_timezone)
+                utc_tz = ZoneInfo('UTC')
+
+                # 创建用户时区的时间（使用今天的日期作为参考）
+                now = datetime.now(user_tz)
+                user_time = now.replace(hour=int(hour), minute=int(minute), second=0, microsecond=0)
+
+                # 转换为 UTC 时间
+                utc_time = user_time.astimezone(utc_tz)
+                utc_hour = utc_time.hour
+                utc_minute = utc_time.minute
+
                 self.scheduler.add_job(
                     func=self.pusher.push_to_user,
-                    trigger=CronTrigger(hour=int(hour), minute=int(minute)),
+                    trigger=CronTrigger(hour=utc_hour, minute=utc_minute, timezone='UTC'),
                     args=[user.user_id],
                     id=f"push_{user.user_id}_{push_time}",
                     replace_existing=True
                 )
 
-                logger.info(f"添加定时任务: user_id={user.user_id}, time={push_time}")
+                logger.info(f"添加定时任务: user_id={user.user_id}, user_time={push_time} ({user_timezone}), utc_time={utc_hour:02d}:{utc_minute:02d} (UTC)")
 
             except Exception as e:
                 logger.error(f"添加定时任务失败: user_id={user.user_id}, time={push_time}, error={e}")

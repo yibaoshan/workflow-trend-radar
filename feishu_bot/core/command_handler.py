@@ -70,13 +70,26 @@ class CommandHandler:
         if config:
             return True, "您已经初始化过配置了\n输入 /status 查看当前配置\n输入 /help 查看帮助"
 
+        # 获取用户信息以获取时区
+        user_info = self.feishu_client.get_user_info(user_id)
+        user_timezone = "Asia/Shanghai"  # 默认时区
+
+        if user_info:
+            # 从用户信息中获取时区
+            user_timezone = user_info.get("time_zone", "Asia/Shanghai")
+            logger.info(f"用户时区: user_id={user_id}, timezone={user_timezone}")
+
+        # 获取所有数据源（默认全选）
+        from ..config.user_config import PLATFORM_MAPPING
+        all_platforms = list(PLATFORM_MAPPING.values())
+
         # 创建默认配置
         config = UserConfig(
             user_id=user_id,
-            keywords=json.dumps(["AI", "区块链"], ensure_ascii=False),
-            platforms=json.dumps(["zhihu", "weibo"], ensure_ascii=False),
+            keywords=json.dumps(["AI", "跨境电商"], ensure_ascii=False),
+            platforms=json.dumps(all_platforms, ensure_ascii=False),
             push_times=json.dumps(["09:00"], ensure_ascii=False),
-            timezone="Asia/Shanghai",
+            timezone=user_timezone,
             report_mode="current",
             enabled=1
         )
@@ -275,7 +288,11 @@ class CommandHandler:
 
     def _handle_help(self, user_id: str, args: str) -> Tuple[bool, str]:
         """处理 /help 命令"""
-        card = build_help_card()
+        # 发送主菜单卡片
+        from ..core.message_builder import build_main_menu_card
+        config = self.db.get_user_config(user_id)
+        enabled = config.enabled == 1 if config else True
+        card = build_main_menu_card(enabled)
         self.feishu_client.send_card_message(user_id, card)
 
         return True, ""
