@@ -192,7 +192,7 @@ def build_help_card() -> Dict:
                     "tag": "div",
                     "text": {
                         "tag": "lark_md",
-                        "content": "**配置命令**\n\n• `/start` - 初始化配置\n• `/keywords AI,区块链` - 设置关键词\n• `/sources 知乎,微博` - 选择数据源\n• `/time 09:00,18:00` - 设置推送时间\n• `/mode current` - 设置报告模式"
+                        "content": "**配置命令**\n\n• `/start` - 初始化配置\n• `/keywords` `AI,区块链` - 设置关键词\n• `/sources` `知乎,微博` - 选择数据源\n• `/time` `09:00,18:00` - 设置推送时间\n• `/mode` `current` - 设置报告模式"
                     }
                 },
                 {"tag": "hr"},
@@ -294,7 +294,7 @@ def build_status_card(keywords: list, platform_names: list, push_times: list, re
                     "tag": "div",
                     "text": {
                         "tag": "lark_md",
-                        "content": "**修改配置**\n\n• `/keywords AI,区块链` - 修改关键词\n• `/sources 知乎,微博` - 修改数据源\n• `/time 09:00,18:00` - 修改推送时间"
+                        "content": "**修改配置**\n\n• `/keywords` `AI,区块链` - 修改关键词\n• `/sources` `知乎,微博` - 修改数据源\n• `/time` `09:00,18:00` - 修改推送时间"
                     }
                 }
             ]

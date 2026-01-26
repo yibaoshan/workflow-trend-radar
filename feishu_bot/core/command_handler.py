@@ -278,4 +278,4 @@ class CommandHandler:
         card = build_help_card()
         self.feishu_client.send_card_message(user_id, card)
 
-        return True, "帮助信息已发送"
+        return True, ""

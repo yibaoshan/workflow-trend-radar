@@ -95,7 +95,9 @@ class FeishuClient:
     def send_card_message(self, user_id: str, card: Dict) -> bool:
         """发送卡片消息"""
         import json
-        content = json.dumps(card, ensure_ascii=False)
+        # card 已经是完整的消息体，包含 msg_type 和 card 字段
+        # 直接发送，不需要再包装
+        content = json.dumps(card.get("card", card), ensure_ascii=False)
         return self.send_message(user_id, content, msg_type="interactive")
 
     def get_user_info(self, user_id: str) -> Optional[Dict]:
