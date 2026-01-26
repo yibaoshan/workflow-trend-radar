@@ -43,6 +43,7 @@ command_handler: CommandHandler = None
 pusher: Pusher = None
 job_manager: JobManager = None
 user_temp_state = {}  # 用户临时状态（数据源多选等）
+user_input_mode = {}  # 用户输入模式（等待输入关键词、时间等）
 
 
 @app.on_event("startup")
@@ -132,6 +133,75 @@ async def handle_event(request: Request):
                 text = content_dict.get("text", "").strip()
 
                 logger.info(f"收到消息: user_id={user_id}, text={text}")
+
+                # 检查是否处于输入模式
+                if user_id in user_input_mode:
+                    input_type = user_input_mode[user_id]
+
+                    if input_type == "waiting_keyword":
+                        # 处理关键词输入
+                        keyword = text.strip()
+                        if keyword:
+                            config = db.get_user_config(user_id)
+                            keywords = config.get_keywords()
+                            if keyword not in keywords and len(keywords) < 10:
+                                keywords.append(keyword)
+                                config.set_keywords(keywords)
+                                db.save_user_config(config)
+
+                                from feishu_bot.core.message_builder import build_keywords_menu_card
+                                card = build_keywords_menu_card(keywords)
+                                feishu_client.send_card_message(user_id, card)
+                                feishu_client.send_text_message(user_id, f"✅ 已添加关键词：{keyword}")
+                            elif keyword in keywords:
+                                feishu_client.send_text_message(user_id, f"⚠️ 关键词已存在：{keyword}")
+                            else:
+                                feishu_client.send_text_message(user_id, "⚠️ 关键词数量已达上限（10个）")
+                        else:
+                            feishu_client.send_text_message(user_id, "⚠️ 关键词不能为空")
+
+                        # 清除输入模式
+                        del user_input_mode[user_id]
+                        return {"code": 0, "msg": "success"}
+
+                    elif input_type == "waiting_time":
+                        # 处理时间输入
+                        time_str = text.strip()
+                        if ':' in time_str:
+                            parts = time_str.split(':')
+                            if len(parts) == 2:
+                                try:
+                                    hour = int(parts[0])
+                                    minute = int(parts[1])
+                                    if 0 <= hour <= 23 and 0 <= minute <= 59:
+                                        config = db.get_user_config(user_id)
+                                        push_times = config.get_push_times()
+                                        if time_str not in push_times:
+                                            push_times.append(time_str)
+                                            config.set_push_times(push_times)
+                                            db.save_user_config(config)
+
+                                            # 重新加载任务
+                                            job_manager.reload_user_jobs(user_id)
+
+                                            from feishu_bot.core.message_builder import build_time_menu_card
+                                            card = build_time_menu_card(push_times)
+                                            feishu_client.send_card_message(user_id, card)
+                                            feishu_client.send_text_message(user_id, f"✅ 已添加推送时间：{time_str}")
+                                        else:
+                                            feishu_client.send_text_message(user_id, f"⚠️ 推送时间已存在：{time_str}")
+                                    else:
+                                        feishu_client.send_text_message(user_id, "⚠️ 时间范围错误，小时应为0-23，分钟应为0-59")
+                                except ValueError:
+                                    feishu_client.send_text_message(user_id, "⚠️ 时间格式错误，请使用 HH:MM 格式（例如：09:30）")
+                            else:
+                                feishu_client.send_text_message(user_id, "⚠️ 时间格式错误，请使用 HH:MM 格式（例如：09:30）")
+                        else:
+                            feishu_client.send_text_message(user_id, "⚠️ 时间格式错误，请使用 HH:MM 格式（例如：09:30）")
+
+                        # 清除输入模式
+                        del user_input_mode[user_id]
+                        return {"code": 0, "msg": "success"}
 
                 # 如果不是命令，显示当前配置状态
                 if not text.startswith('/'):
@@ -223,7 +293,7 @@ async def handle_card_action(request: Request):
         from feishu_bot.core.message_builder import (
             build_main_menu_card, build_keywords_menu_card,
             build_sources_menu_card, build_time_menu_card,
-            build_input_card, build_status_card
+            build_input_card, build_status_card, build_text_prompt_card
         )
         from feishu_bot.config.user_config import PLATFORM_NAME_MAPPING
 
@@ -289,10 +359,11 @@ async def handle_card_action(request: Request):
 
         # 关键词操作
         elif action_type == "add_keyword_prompt":
-            card = build_input_card(
-                "**请输入关键词**\n\n例如：人工智能",
-                "add_keyword_confirm",
-                "请输入关键词"
+            # 使用降级方案：提示用户直接发送文本消息
+            user_input_mode[user_id] = "waiting_keyword"
+            card = build_text_prompt_card(
+                "**请输入关键词**",
+                "人工智能"
             )
             feishu_client.send_card_message(user_id, card)
 
@@ -386,10 +457,11 @@ async def handle_card_action(request: Request):
                 feishu_client.send_text_message(user_id, f"⚠️ 推送时间已存在：{time_str}")
 
         elif action_type == "add_custom_time_prompt":
-            card = build_input_card(
-                "**请输入推送时间**\n\n格式：HH:MM（例如：09:30）",
-                "add_time_confirm",
-                "例如：09:30"
+            # 使用降级方案：提示用户直接发送文本消息
+            user_input_mode[user_id] = "waiting_time"
+            card = build_text_prompt_card(
+                "**请输入推送时间**\n\n格式：HH:MM",
+                "09:30"
             )
             feishu_client.send_card_message(user_id, card)
 

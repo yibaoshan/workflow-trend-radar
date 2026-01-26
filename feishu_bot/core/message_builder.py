@@ -674,7 +674,12 @@ def build_time_menu_card(push_times: list) -> Dict:
 
 
 def build_input_card(prompt_text: str, action_type: str, placeholder: str = "") -> Dict:
-    """构建通用输入框卡片"""
+    """
+    构建通用输入框卡片
+
+    注意：飞书卡片的 input 组件在某些客户端版本可能存在兼容性问题
+    如果输入框无法使用，建议降级为文本消息交互方式
+    """
     return {
         "msg_type": "interactive",
         "card": {
@@ -698,7 +703,7 @@ def build_input_card(prompt_text: str, action_type: str, placeholder: str = "") 
                     "tag": "input",
                     "name": "user_input",
                     "required": True,
-                    "placeholder": placeholder,
+                    "placeholder": {"tag": "plain_text", "content": placeholder} if placeholder else {"tag": "plain_text", "content": "请输入内容"},
                     "default_value": "",
                     "width": "default",
                     "max_length": 100
@@ -716,6 +721,57 @@ def build_input_card(prompt_text: str, action_type: str, placeholder: str = "") 
                         {
                             "tag": "button",
                             "text": {"tag": "plain_text", "content": "❌ 取消"},
+                            "type": "default",
+                            "value": json.dumps({"action": "show_main_menu"}, ensure_ascii=False)
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+
+
+def build_text_prompt_card(prompt_text: str, example: str = "") -> Dict:
+    """
+    构建文本提示卡片（降级方案）
+
+    当 input 组件不可用时，使用此卡片提示用户直接发送文本消息
+    """
+    content = f"{prompt_text}\n\n**例如**: {example}" if example else prompt_text
+
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {
+                    "tag": "plain_text",
+                    "content": "✍️ 输入信息"
+                },
+                "template": "blue"
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": content
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "plain_text",
+                        "content": "💡 请直接在聊天框中发送您要输入的内容"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "action",
+                    "actions": [
+                        {
+                            "tag": "button",
+                            "text": {"tag": "plain_text", "content": "🔙 返回主菜单"},
                             "type": "default",
                             "value": json.dumps({"action": "show_main_menu"}, ensure_ascii=False)
                         }

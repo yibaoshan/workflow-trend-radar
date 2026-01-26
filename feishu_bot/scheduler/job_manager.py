@@ -3,6 +3,7 @@
 """
 
 import logging
+import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -22,6 +23,25 @@ class JobManager:
         self.pusher = pusher
         # 使用 UTC 时区的调度器
         self.scheduler = AsyncIOScheduler(timezone='UTC')
+
+    def _sync_push_wrapper(self, user_id: str):
+        """
+        同步包装函数，用于在定时任务中调用异步的 push_to_user
+
+        APScheduler 的 AsyncIOScheduler 可以直接调度协程函数，
+        但为了确保兼容性，这里使用包装函数
+        """
+        try:
+            # 获取当前事件循环
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 如果循环正在运行，创建任务
+                asyncio.create_task(self.pusher.push_to_user(user_id))
+            else:
+                # 如果循环未运行，直接运行
+                loop.run_until_complete(self.pusher.push_to_user(user_id))
+        except Exception as e:
+            logger.error(f"定时推送执行失败: user_id={user_id}, error={e}", exc_info=True)
 
     def start(self):
         """启动调度器"""
@@ -67,7 +87,7 @@ class JobManager:
                 utc_minute = utc_time.minute
 
                 self.scheduler.add_job(
-                    func=self.pusher.push_to_user,
+                    func=self._sync_push_wrapper,
                     trigger=CronTrigger(hour=utc_hour, minute=utc_minute, timezone='UTC'),
                     args=[user.user_id],
                     id=f"push_{user.user_id}_{push_time}",
