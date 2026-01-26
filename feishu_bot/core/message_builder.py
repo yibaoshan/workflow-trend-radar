@@ -222,3 +222,82 @@ def build_help_card() -> Dict:
             ]
         }
     }
+
+
+def build_status_card(keywords: list, platform_names: list, push_times: list, report_mode: str, enabled: bool) -> Dict:
+    """构建状态卡片"""
+    # 构建配置信息
+    keywords_text = "、".join(keywords) if keywords else "未设置"
+    sources_text = "、".join(platform_names) if platform_names else "未设置"
+    times_text = "、".join(push_times) if push_times else "未设置"
+
+    mode_map = {
+        'daily': '当日汇总',
+        'current': '当前榜单',
+        'incremental': '增量监控'
+    }
+    mode_text = mode_map.get(report_mode, report_mode)
+    status_text = "✅ 启用" if enabled else "⏸️ 已暂停"
+
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {
+                    "tag": "plain_text",
+                    "content": "📋 当前配置"
+                },
+                "template": "green"
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": f"**关键词**\n{keywords_text}"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": f"**数据源**\n{sources_text}"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": f"**推送时间**\n每天 {times_text}"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": f"**报告模式**\n{mode_text}"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": f"**状态**\n{status_text}"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": "**修改配置**\n\n• `/keywords AI,区块链` - 修改关键词\n• `/sources 知乎,微博` - 修改数据源\n• `/time 09:00,18:00` - 修改推送时间"
+                    }
+                }
+            ]
+        }
+    }
+

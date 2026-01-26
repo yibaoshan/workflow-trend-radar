@@ -158,6 +158,12 @@ async def handle_card_action(request: Request):
         body = await request.json()
         logger.info(f"收到卡片交互: {body}")
 
+        # 处理 URL 验证（飞书配置回调地址时会发送验证请求）
+        if body.get("type") == "url_verification":
+            challenge = body.get("challenge", "")
+            logger.info(f"卡片回调 URL 验证: challenge={challenge}")
+            return {"challenge": challenge}
+
         action = body.get("action", {})
         value = action.get("value", {})
         user_id = body.get("open_id", "")

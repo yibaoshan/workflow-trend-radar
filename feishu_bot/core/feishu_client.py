@@ -88,8 +88,9 @@ class FeishuClient:
 
     def send_text_message(self, user_id: str, text: str) -> bool:
         """发送文本消息"""
-        content = {"text": text}
-        return self.send_message(user_id, str(content), msg_type="text")
+        import json
+        content = json.dumps({"text": text}, ensure_ascii=False)
+        return self.send_message(user_id, content, msg_type="text")
 
     def send_card_message(self, user_id: str, card: Dict) -> bool:
         """发送卡片消息"""

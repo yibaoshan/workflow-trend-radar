@@ -9,7 +9,7 @@ import json
 from ..storage.database import Database
 from ..storage.models import UserConfig
 from ..core.feishu_client import FeishuClient
-from ..core.message_builder import build_welcome_card, build_help_card
+from ..core.message_builder import build_welcome_card, build_help_card, build_status_card
 from ..config.user_config import PLATFORM_MAPPING
 
 logger = logging.getLogger(__name__)
@@ -35,8 +35,9 @@ class CommandHandler:
         """
         message = message.strip()
 
+        # 如果不是命令格式，自动触发帮助
         if not message.startswith('/'):
-            return False, "请使用命令格式，例如：/help"
+            return self._handle_help(user_id, "")
 
         parts = message.split(maxsplit=1)
         command = parts[0].lower()
@@ -221,21 +222,11 @@ class CommandHandler:
         from ..config.user_config import PLATFORM_NAME_MAPPING
         platform_names = [PLATFORM_NAME_MAPPING.get(pid, pid) for pid in platforms]
 
-        status_text = f"""📋 **当前配置**
+        # 发送状态卡片
+        card = build_status_card(keywords, platform_names, push_times, config.report_mode, config.enabled == 1)
+        self.feishu_client.send_card_message(user_id, card)
 
-**关键词**：{', '.join(keywords) if keywords else '未设置'}
-**数据源**：{', '.join(platform_names) if platform_names else '未设置'}
-**推送时间**：{', '.join(push_times) if push_times else '未设置'}
-**报告模式**：{config.report_mode}
-**状态**：{'启用' if config.enabled else '已暂停'}
-
-修改配置：
-• /keywords AI,区块链
-• /sources 知乎,微博
-• /time 09:00,18:00
-"""
-
-        return True, status_text
+        return True, ""
 
     def _handle_test(self, user_id: str, args: str) -> Tuple[bool, str]:
         """处理 /test 命令"""
