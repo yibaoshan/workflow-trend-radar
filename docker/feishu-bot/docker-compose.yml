@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  feishu-trend-bot:
+    build:
+      context: ../..
+      dockerfile: docker/feishu-bot/Dockerfile
+    container_name: feishu-trend-bot
+    restart: unless-stopped
+    ports:
+      - "9001:9001"
+    environment:
+      - FEISHU_APP_ID=${FEISHU_APP_ID}
+      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+      - HOST=0.0.0.0
+      - PORT=9001
+      - DATABASE_PATH=/data/feishu_bot.db
+      - LOG_LEVEL=INFO
+      - TZ=Asia/Shanghai
+    volumes:
+      - feishu-bot-data:/data
+      - feishu-bot-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - feishu-bot-network
+
+volumes:
+  feishu-bot-data:
+    driver: local
+  feishu-bot-logs:
+    driver: local
+
+networks:
+  feishu-bot-network:
+    driver: bridge
