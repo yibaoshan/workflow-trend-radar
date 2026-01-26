@@ -113,33 +113,99 @@ class Pusher:
             dict: 分析结果
         """
         try:
-            # 写入临时配置文件
-            temp_config_file = os.path.join(tempfile.gettempdir(), f"config_{os.getpid()}.yaml")
-            with open(temp_config_file, 'w', encoding='utf-8') as f:
-                yaml.dump(config_dict, f, allow_unicode=True)
-
             # 导入 trendradar 核心模块
             from trendradar.context import AppContext
             from trendradar.crawler import DataFetcher
-            from trendradar.core.analyzer import analyze_news
 
-            # 创建上下文
-            context = AppContext(config_dict, keywords_file)
+            # 创建上下文（只需要 config 参数）
+            context = AppContext(config_dict)
+
+            # 调试：打印平台配置
+            logger.info(f"平台配置: {context.platforms}")
+            logger.info(f"平台ID列表: {context.platform_ids}")
+
+            # 准备平台 ID 列表
+            ids = []
+            for platform in context.platforms:
+                if "name" in platform:
+                    ids.append((platform["id"], platform["name"]))
+                else:
+                    ids.append(platform["id"])
+
+            logger.info(f"准备抓取的平台: {ids}")
+
+            # 创建数据抓取器
+            proxy_url = config_dict.get('PROXY_URL')
+            fetcher = DataFetcher(proxy_url)
 
             # 抓取数据
-            fetcher = DataFetcher(context)
-            crawl_results = fetcher.fetch_all()
+            request_interval = config_dict.get('REQUEST_INTERVAL', 1000)
+            crawl_results, id_to_name, failed_ids = fetcher.crawl_websites(ids, request_interval)
+
+            logger.info(f"抓取结果: 成功={len(crawl_results)}, 失败={len(failed_ids)}")
 
             if not crawl_results:
                 logger.warning("抓取结果为空")
                 return None
 
-            # 分析数据
-            results = analyze_news(context, crawl_results)
+            # 检测新增标题
+            new_titles = context.detect_new_titles(context.platform_ids)
 
-            # 清理临时配置文件
-            if os.path.exists(temp_config_file):
-                os.remove(temp_config_file)
+            # 加载频率词配置
+            word_groups, filter_words, global_filters = context.load_frequency_words()
+
+            # 对于 current 模式，不需要加载历史数据
+            # 因为这是飞书机器人的实时推送，每次都是独立的
+            title_info = None
+
+            # 统计分析
+            stats, total_titles = context.count_frequency(
+                results=crawl_results,
+                word_groups=word_groups,
+                filter_words=filter_words,
+                id_to_name=id_to_name,
+                title_info=title_info,
+                new_titles=new_titles,
+                mode=config_dict.get('REPORT_MODE', 'current'),
+                global_filters=global_filters,
+                quiet=True,
+            )
+
+            logger.info(f"统计分析完成: stats数量={len(stats)}, total_titles={total_titles}")
+
+            # 构建结果
+            results = {
+                'hotlist': {},
+                'new_items': []
+            }
+
+            # 将统计结果转换为飞书卡片需要的格式
+            for stat in stats:
+                keyword = stat['word']
+                titles = stat.get('titles', [])
+
+                logger.info(f"处理关键词: {keyword}, 标题数量={len(titles)}")
+
+                if titles:
+                    results['hotlist'][keyword] = []
+                    for title_data in titles:
+                        news_item = {
+                            'title': title_data['title'],
+                            'url': title_data.get('url', '#'),
+                            'platform': title_data.get('source_name', '未知'),
+                            'is_new': title_data.get('is_new', False)
+                        }
+                        results['hotlist'][keyword].append(news_item)
+
+                        # 如果是新增，也添加到 new_items
+                        if title_data.get('is_new', False):
+                            results['new_items'].append({
+                                'title': title_data['title'],
+                                'url': title_data.get('url', '#'),
+                                'platform': title_data.get('source_name', '未知')
+                            })
+
+            logger.info(f"构建结果完成: hotlist关键词数={len(results['hotlist'])}, new_items数={len(results['new_items'])}")
 
             return results
 

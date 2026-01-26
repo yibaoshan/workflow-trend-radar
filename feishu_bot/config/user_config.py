@@ -42,31 +42,46 @@ def generate_user_config(user_config: UserConfig, base_config_path: str) -> Tupl
     """
     # 加载基础配置
     with open(base_config_path, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
+        config_yaml = yaml.safe_load(f)
 
     # 获取用户配置
     keywords = user_config.get_keywords()
     platforms = user_config.get_platforms()
 
     # 覆盖用户配置
-    config['app']['timezone'] = user_config.timezone
-    config['report']['mode'] = user_config.report_mode
+    config_yaml['app']['timezone'] = user_config.timezone
+    config_yaml['report']['mode'] = user_config.report_mode
 
     # 配置平台
-    config['platforms']['sources'] = [
+    config_yaml['platforms']['sources'] = [
         {"id": pid, "name": PLATFORM_NAME_MAPPING.get(pid, pid)}
         for pid in platforms
-        if pid in PLATFORM_NAME_MAPPING.values()
     ]
 
     # 禁用通知（由机器人自己发送）
-    config['notification']['enabled'] = False
+    config_yaml['notification']['enabled'] = False
 
     # 禁用 AI 分析（节省成本，可选）
-    config['ai_analysis']['enabled'] = False
+    config_yaml['ai_analysis']['enabled'] = False
 
     # 禁用 AI 翻译
-    config['ai_translation']['enabled'] = False
+    config_yaml['ai_translation']['enabled'] = False
+
+    # 使用 load_config 的转换逻辑
+    from trendradar.core import load_config
+    import tempfile
+
+    # 写入临时配置文件
+    temp_config_file = os.path.join(tempfile.gettempdir(), f"config_{user_config.user_id}.yaml")
+    with open(temp_config_file, 'w', encoding='utf-8') as f:
+        yaml.dump(config_yaml, f, allow_unicode=True)
+
+    # 加载并转换配置
+    config = load_config(temp_config_file)
+
+    # 清理临时配置文件
+    if os.path.exists(temp_config_file):
+        os.remove(temp_config_file)
 
     # 写入临时关键词文件
     temp_keywords_file = os.path.join(tempfile.gettempdir(), f"keywords_{user_config.user_id}.txt")

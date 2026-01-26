@@ -28,18 +28,18 @@ class JobManager:
         """
         同步包装函数，用于在定时任务中调用异步的 push_to_user
 
-        APScheduler 的 AsyncIOScheduler 可以直接调度协程函数，
-        但为了确保兼容性，这里使用包装函数
+        APScheduler 在独立线程中执行任务，需要创建新的事件循环
         """
         try:
-            # 获取当前事件循环
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # 如果循环正在运行，创建任务
-                asyncio.create_task(self.pusher.push_to_user(user_id))
-            else:
-                # 如果循环未运行，直接运行
+            # 创建新的事件循环（APScheduler 在独立线程中执行）
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # 运行异步推送任务
                 loop.run_until_complete(self.pusher.push_to_user(user_id))
+            finally:
+                # 清理事件循环
+                loop.close()
         except Exception as e:
             logger.error(f"定时推送执行失败: user_id={user_id}, error={e}", exc_info=True)
 
