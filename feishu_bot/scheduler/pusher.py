@@ -151,8 +151,8 @@ class Pusher:
             # 检测新增标题
             new_titles = context.detect_new_titles(context.platform_ids)
 
-            # 加载频率词配置
-            word_groups, filter_words, global_filters = context.load_frequency_words()
+            # 加载频率词配置（使用用户自定义的关键词文件）
+            word_groups, filter_words, global_filters = context.load_frequency_words(keywords_file)
 
             # 对于 current 模式，不需要加载历史数据
             # 因为这是飞书机器人的实时推送，每次都是独立的

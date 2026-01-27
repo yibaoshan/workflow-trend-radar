@@ -57,6 +57,8 @@ class FeishuClient:
         Returns:
             bool: 是否发送成功
         """
+        import json
+
         url = f"{self.base_url}/im/v1/messages"
         params = {"receive_id_type": "open_id"}
         headers = {
@@ -64,10 +66,16 @@ class FeishuClient:
             "Content-Type": "application/json"
         }
 
+        # 确保 content 是有效的 JSON 字符串
+        if isinstance(content, str):
+            content_str = content
+        else:
+            content_str = json.dumps(content, ensure_ascii=False)
+
         payload = {
             "receive_id": user_id,
             "msg_type": msg_type,
-            "content": content if isinstance(content, str) else str(content)
+            "content": content_str
         }
 
         try:

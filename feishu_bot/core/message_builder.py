@@ -81,7 +81,8 @@ def build_message_card(results: Dict, user_config: Any, news_count: int = 0) -> 
                 }
             })
 
-            for item in news_list[:3]:  # 每个关键词最多显示 3 条
+            # 显示所有新闻，不限制条数
+            for item in news_list:
                 title = item.get('title', '无标题')
                 url = item.get('url', '#')
                 platform = item.get('platform', '未知')
@@ -737,7 +738,7 @@ def build_text_prompt_card(prompt_text: str, example: str = "") -> Dict:
 
     当 input 组件不可用时，使用此卡片提示用户直接发送文本消息
     """
-    content = f"{prompt_text}\n\n**例如**: {example}" if example else prompt_text
+    content = f"{prompt_text}\n\n**示例**: `{example}`" if example else prompt_text
 
     return {
         "msg_type": "interactive",
@@ -747,7 +748,7 @@ def build_text_prompt_card(prompt_text: str, example: str = "") -> Dict:
                     "tag": "plain_text",
                     "content": "✍️ 输入信息"
                 },
-                "template": "blue"
+                "template": "orange"
             },
             "elements": [
                 {
@@ -759,10 +760,27 @@ def build_text_prompt_card(prompt_text: str, example: str = "") -> Dict:
                 },
                 {"tag": "hr"},
                 {
+                    "tag": "note",
+                    "elements": [
+                        {
+                            "tag": "plain_text",
+                            "content": "👇 操作步骤"
+                        }
+                    ]
+                },
+                {
                     "tag": "div",
                     "text": {
-                        "tag": "plain_text",
-                        "content": "💡 请直接在聊天框中发送您要输入的内容"
+                        "tag": "lark_md",
+                        "content": "**1️⃣ 点击下方输入框**\n**2️⃣ 输入内容后点击发送**\n**3️⃣ 系统将自动识别并保存**"
+                    }
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": "⚠️ **重要提示**：请直接在聊天框中发送文本消息，不要点击卡片按钮"
                     }
                 },
                 {"tag": "hr"},
