@@ -5,6 +5,7 @@
 import logging
 import requests
 from typing import Dict, Optional
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,12 @@ class FeishuClient:
         self.app_secret = app_secret
         self.base_url = "https://open.feishu.cn/open-apis"
         self._access_token: Optional[str] = None
+        self._token_expire_time: float = 0  # token 过期时间戳
 
     def get_access_token(self) -> str:
         """获取 tenant_access_token"""
-        if self._access_token:
+        # 检查 token 是否存在且未过期（提前5分钟刷新）
+        if self._access_token and time.time() < (self._token_expire_time - 300):
             return self._access_token
 
         url = f"{self.base_url}/auth/v3/tenant_access_token/internal"
@@ -36,7 +39,10 @@ class FeishuClient:
 
             if data.get("code") == 0:
                 self._access_token = data["tenant_access_token"]
-                logger.info("获取 access_token 成功")
+                # 飞书返回的 expire 是秒数，通常是 7200（2小时）
+                expire_seconds = data.get("expire", 7200)
+                self._token_expire_time = time.time() + expire_seconds
+                logger.info(f"获取 access_token 成功，有效期: {expire_seconds}秒")
                 return self._access_token
             else:
                 raise Exception(f"获取 access_token 失败: {data}")
