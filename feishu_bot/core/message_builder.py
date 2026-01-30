@@ -217,7 +217,7 @@ def build_help_card() -> Dict:
                     "tag": "div",
                     "text": {
                         "tag": "lark_md",
-                        "content": "**可用数据源**\n\n知乎、微博、百度、抖音、今日头条、B站、贴吧、澎湃、华尔街见闻、财联社、凤凰网"
+                        "content": "**可用数据源**\n\n36氪、百度、哔哩哔哩、参考消息、虫部落、豆瓣、抖音、快讯、FreeBuf、格隆汇、果壳、GitHub、Hacker News、虎扑、凤凰网、爱奇艺、IT之家、金十数据、稀土掘金、靠谱新闻、快手、Linux.do、财经新闻、牛客、远景论坛、Product Hunt、腾讯视频、什么值得买、Solidot、俄罗斯卫星通讯社、少数派、Steam、腾讯新闻、澎湃新闻、贴吧、今日头条、V2EX、华尔街见闻、微博、雪球、联合早报、知乎"
                     }
                 }
             ]
